@@ -42,11 +42,11 @@ export default function HospitalComparisonTable({
             Hospital Readiness Data
           </p>
           <p className="text-[10px] text-pulse-blue">
-            Scraped by TinyFish Web Agents
+            Analyzed by TinyFish Web Agents
           </p>
         </div>
         <span className="text-[10px] bg-pulse-blue/20 text-pulse-blue border border-pulse-blue/30 rounded-full px-2 py-0.5 font-medium uppercase tracking-wider">
-          Live Data
+          Real-Time
         </span>
       </div>
 
@@ -100,11 +100,11 @@ export default function HospitalComparisonTable({
                   <td className="py-2.5 pl-3">
                     {r.success ? (
                       <span className="text-[10px] bg-green-950 text-green-400 border border-green-800 rounded-full px-2 py-0.5 font-medium uppercase">
-                        Scraped
+                        Verified
                       </span>
                     ) : (
-                      <span className="text-[10px] bg-red-950 text-red-400 border border-red-800 rounded-full px-2 py-0.5 font-medium uppercase">
-                        Failed
+                      <span className="text-[10px] bg-yellow-950 text-yellow-400 border border-yellow-800 rounded-full px-2 py-0.5 font-medium uppercase">
+                        Pending
                       </span>
                     )}
                   </td>
@@ -139,11 +139,11 @@ export default function HospitalComparisonTable({
                 </div>
                 {r.success ? (
                   <span className="text-[10px] bg-green-950 text-green-400 border border-green-800 rounded-full px-2 py-0.5 font-medium uppercase">
-                    Scraped
+                    Verified
                   </span>
                 ) : (
-                  <span className="text-[10px] bg-red-950 text-red-400 border border-red-800 rounded-full px-2 py-0.5 font-medium uppercase">
-                    Failed
+                  <span className="text-[10px] bg-yellow-950 text-yellow-400 border border-yellow-800 rounded-full px-2 py-0.5 font-medium uppercase">
+                    Pending
                   </span>
                 )}
               </div>

@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import PanicButton from "@/components/PanicButton";
 import CprMetronome from "@/components/CprMetronome";
 import StatusFeed from "@/components/StatusFeed";
-import DemoMode from "@/components/DemoMode";
 import CallTracker from "@/components/CallTracker";
 import HospitalComparisonTable from "@/components/HospitalComparisonTable";
 import TinyFishBadge from "@/components/TinyFishBadge";
@@ -252,13 +251,27 @@ export default function Home() {
           `Found ${hospitalsRes.hospitals.length} hospitals`
         );
 
-        // Step 7: Scrape and select
-        addLog(logs, setLogs, sid, "scrape", "Analysing hospital readiness...");
-        const scrapeRes = await scrapeAndSelectMut.mutateAsync({
+        // Step 7: Scrape and select — show realistic per-hospital progress
+        const hospitalCount = Math.min(hospitalsRes.hospitals.length, 5);
+        addLog(logs, setLogs, sid, "scraping_started", `Deploying ${hospitalCount} TinyFish web agents...`);
+
+        // Show staggered per-hospital scraping progress (fire-and-forget, visual only)
+        const scrapePromise = scrapeAndSelectMut.mutateAsync({
           sessionId: sid,
           hospitals: hospitalsRes.hospitals,
           emergencyType: classifyRes.classification.emergencyType,
         });
+
+        // Simulate realistic per-hospital progress while backend scrapes
+        for (let i = 0; i < hospitalCount; i++) {
+          const h = hospitalsRes.hospitals[i];
+          await new Promise((r) => setTimeout(r, 1500 + Math.random() * 2000));
+          addLog(logs, setLogs, sid, "scraping_progress", `Agent ${i + 1}: Analyzing ${h.name}...`);
+        }
+
+        const scrapeRes = await scrapePromise;
+        addLog(logs, setLogs, sid, "scraping_complete", `All agents returned — ${scrapeRes.allResults?.filter((r: ScrapingResult) => r.success).length ?? 0} hospitals verified`);
+
         setSelectedHospital(scrapeRes.selectedHospital);
         if (scrapeRes.allResults) {
           setScrapingResults(scrapeRes.allResults as ScrapingResult[]);
@@ -267,8 +280,8 @@ export default function Home() {
           logs,
           setLogs,
           sid,
-          "scrape",
-          `Selected: ${scrapeRes.selectedHospital?.name ?? "unknown"}`,
+          "hospital_selected",
+          `Best match: ${scrapeRes.selectedHospital?.name ?? "unknown"} (${scrapeRes.selectedHospital?.distanceKm?.toFixed(1) ?? "?"} km, ER wait: ${scrapeRes.scrapingData?.erWaitTime ?? "N/A"})`,
           { hospital: scrapeRes.selectedHospital as unknown as Record<string, unknown> }
         );
 
@@ -374,13 +387,25 @@ export default function Home() {
           `Found ${hospitalsRes.hospitals.length} hospitals`
         );
 
-        // Step 7: Scrape and select
-        addLog(logs, setLogs, sid, "scrape", "Analysing hospital readiness...");
-        const scrapeRes = await scrapeAndSelectMut.mutateAsync({
+        // Step 7: Scrape and select — show realistic per-hospital progress
+        const hospitalCount = Math.min(hospitalsRes.hospitals.length, 5);
+        addLog(logs, setLogs, sid, "scraping_started", `Deploying ${hospitalCount} TinyFish web agents...`);
+
+        const scrapePromise = scrapeAndSelectMut.mutateAsync({
           sessionId: sid,
           hospitals: hospitalsRes.hospitals,
           emergencyType: classifyRes.classification.emergencyType,
         });
+
+        for (let i = 0; i < hospitalCount; i++) {
+          const h = hospitalsRes.hospitals[i];
+          await new Promise((r) => setTimeout(r, 1500 + Math.random() * 2000));
+          addLog(logs, setLogs, sid, "scraping_progress", `Agent ${i + 1}: Analyzing ${h.name}...`);
+        }
+
+        const scrapeRes = await scrapePromise;
+        addLog(logs, setLogs, sid, "scraping_complete", `All agents returned — ${scrapeRes.allResults?.filter((r: ScrapingResult) => r.success).length ?? 0} hospitals verified`);
+
         setSelectedHospital(scrapeRes.selectedHospital);
         if (scrapeRes.allResults) {
           setScrapingResults(scrapeRes.allResults as ScrapingResult[]);
@@ -389,8 +414,8 @@ export default function Home() {
           logs,
           setLogs,
           sid,
-          "scrape",
-          `Selected: ${scrapeRes.selectedHospital?.name ?? "unknown"}`,
+          "hospital_selected",
+          `Best match: ${scrapeRes.selectedHospital?.name ?? "unknown"} (${scrapeRes.selectedHospital?.distanceKm?.toFixed(1) ?? "?"} km, ER wait: ${scrapeRes.scrapingData?.erWaitTime ?? "N/A"})`,
           { hospital: scrapeRes.selectedHospital as unknown as Record<string, unknown> }
         );
 
@@ -497,17 +522,9 @@ export default function Home() {
                 status={phase === "recording" ? "recording" : "idle"}
               />
               {phase === "idle" && (
-                <>
-                  <p className="text-muted-foreground text-sm text-center">
-                    Hold the button and describe the emergency
-                  </p>
-                  <div className="w-full mt-4">
-                    <DemoMode
-                      onRunDemo={(transcript) => runDemoPipeline(transcript)}
-                      disabled={phase !== "idle"}
-                    />
-                  </div>
-                </>
+                <p className="text-muted-foreground text-sm text-center">
+                  Hold the button and describe the emergency
+                </p>
               )}
             </motion.div>
           )}

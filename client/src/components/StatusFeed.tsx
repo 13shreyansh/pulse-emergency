@@ -23,38 +23,52 @@ const relativeTimeFormatter = new Intl.RelativeTimeFormat("en", {
 });
 
 function getStepVisualState(step: string): StepVisualState {
-  const normalizedStep = step.trim().toLowerCase();
+  const s = step.trim().toLowerCase();
 
+  // Success / completion states
   if (
-    normalizedStep.startsWith("complete") ||
-    normalizedStep.startsWith("selected")
+    s.startsWith("complete") ||
+    s.startsWith("selected") ||
+    s === "scraping_complete" ||
+    s === "hospital_selected" ||
+    s === "sms_sent" ||
+    s === "classification_complete" ||
+    s === "transcription_complete"
   ) {
     return {
       dotClassName: "bg-emerald-500 text-emerald-950",
-      icon: "✓",
+      icon: "\u2713",
     };
   }
 
+  // In-progress / searching states
   if (
-    normalizedStep.startsWith("started") ||
-    normalizedStep.startsWith("search")
+    s.startsWith("started") ||
+    s.startsWith("search") ||
+    s === "scraping_started" ||
+    s === "scraping_progress" ||
+    s === "scrape" ||
+    s === "call_initiated" ||
+    s === "call_connected" ||
+    s === "dispatch"
   ) {
     return {
       dotClassName: "bg-amber-400 text-amber-950",
-      icon: "⟳",
+      icon: "\u27F3",
     };
   }
 
-  if (normalizedStep.startsWith("error")) {
+  // Error states
+  if (s.startsWith("error") || s === "sms_failed") {
     return {
       dotClassName: "bg-rose-500 text-rose-950",
-      icon: "✕",
+      icon: "\u2715",
     };
   }
 
   return {
     dotClassName: "bg-sky-500 text-sky-950",
-    icon: "●",
+    icon: "\u25CF",
   };
 }
 
