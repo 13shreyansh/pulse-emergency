@@ -12,7 +12,7 @@
 - [x] Vapi AI autonomous outbound phone call dispatch
 - [x] Context-aware medical guardrails (CPR competence check, AHA hands-only guidance)
 - [ ] Mobile-first responsive design with large touch targets
-- [ ] Demo mode with simulated hospital data and test call to +91 9204151001
+- [x] Demo mode with simulated hospital data and test call to +91 9204151001
 - [x] End-to-end flow wiring (voice → classify → search → scrape → call)
 - [x] Vitest test coverage for backend API routes
 - [x] Agent: tRPC emergency router (Claude Code)
@@ -21,3 +21,18 @@
 - [x] Agent: db-helpers for emergency sessions (Claude Code)
 - [x] Create GitHub repo and push all current working code (https://github.com/13shreyansh/pulse-emergency)
 - [ ] Push to GitHub after every major milestone going forward
+- [x] Redesign UI: softer palette (dark navy/slate bg, softer red accents, more white space)
+- [x] Redesign Vapi assistant: conversational interactive call (not monologue), 0.90x speed
+- [x] Build call tracking: poll Vapi for real-time call status (ringing → in-progress → completed) [CODE WRITTEN, NOT YET WIRED]
+- [x] Build call transcript display: pull and show Vapi call transcript in UI after call ends [CODE WRITTEN, NOT YET WIRED]
+- [x] Build call outcome parser: extract hospital confirmation, ER availability from transcript [CODE WRITTEN, NOT YET WIRED]
+- [ ] Show call outcome in UI with final status card [BLOCKED: needs router fix + CallTracker wiring]
+- [ ] Wire CallTracker into Home.tsx (render after dispatch when callId exists)
+- [ ] Fix tRPC contract: rename router getCallStatus → callStatus OR update CallTracker query
+- [ ] Update getCallStatus to call parseCallOutcome(transcript) and include outcome in response
+- [ ] Fix TypeScript errors in CallTracker.tsx (implicit any in map callbacks)
+- [ ] Add "Powered by TinyFish" badge to UI
+- [ ] Add hospital comparison table showing scraped data
+- [ ] Fix hardcoded bg-black in PanicButton.tsx and CprMetronome.tsx
+- [ ] Prepare 3-minute demo script for hackathon judges
+- [x] Write comprehensive HANDOFF.md for session handoff

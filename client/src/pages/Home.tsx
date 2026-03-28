@@ -33,7 +33,7 @@ function addLog(
 }
 
 const severityColor: Record<string, string> = {
-  critical: "bg-red-600 text-white",
+  critical: "bg-primary text-white",
   high: "bg-yellow-500 text-black",
   moderate: "bg-green-600 text-white",
 };
@@ -369,13 +369,13 @@ export default function Home() {
       : "error";
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center px-4 py-6 pb-[env(safe-area-inset-bottom)]">
+    <div className="min-h-screen bg-background text-white flex flex-col items-center px-4 py-6 pb-[env(safe-area-inset-bottom)]">
       {/* Header */}
       <header className="w-full max-w-md text-center mb-8">
-        <h1 className="text-3xl sm:text-4xl font-black tracking-widest text-red-500">
+        <h1 className="text-3xl sm:text-4xl font-black tracking-widest text-primary">
           PULSE
         </h1>
-        <p className="text-xs text-gray-400 tracking-widest uppercase mt-1">
+        <p className="text-xs text-muted-foreground tracking-widest uppercase mt-1">
           Emergency Dispatch
         </p>
       </header>
@@ -400,7 +400,7 @@ export default function Home() {
               />
               {phase === "idle" && (
                 <>
-                  <p className="text-gray-500 text-sm text-center">
+                  <p className="text-muted-foreground text-sm text-center">
                     Hold the button and describe the emergency
                   </p>
                   <div className="w-full mt-4">
@@ -426,8 +426,8 @@ export default function Home() {
             >
               {/* Transcript */}
               {transcript && (
-                <div className="bg-gray-900 rounded-xl p-4 border border-gray-700 touch-manipulation">
-                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
+                <div className="bg-card rounded-xl p-4 border border-border touch-manipulation">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
                     Transcript
                   </p>
                   <p className="text-white text-sm leading-relaxed">
@@ -438,12 +438,12 @@ export default function Home() {
 
               {/* Classification */}
               {classification && (
-                <div className="bg-gray-900 rounded-xl p-4 border border-gray-700 flex flex-col gap-3 touch-manipulation">
+                <div className="bg-card rounded-xl p-4 border border-border flex flex-col gap-3 touch-manipulation">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span
                       className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded ${
                         severityColor[classification.severity] ??
-                        "bg-gray-600 text-white"
+                        "bg-muted text-white"
                       }`}
                     >
                       {classification.severity}
@@ -451,17 +451,17 @@ export default function Home() {
                     <span className="text-white font-semibold text-sm">
                       {classification.emergencyType.replace(/_/g, " ")}
                     </span>
-                    <span className="text-gray-400 text-xs ml-auto">
+                    <span className="text-muted-foreground text-xs ml-auto">
                       {Math.round(classification.confidence * 100)}% confidence
                     </span>
                   </div>
-                  <p className="text-gray-300 text-sm">{classification.summary}</p>
+                  <p className="text-foreground/80 text-sm">{classification.summary}</p>
                   {classification.keySymptoms.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {classification.keySymptoms.map((s) => (
                         <span
                           key={s}
-                          className="text-xs bg-gray-800 text-gray-300 rounded-full px-2 py-0.5"
+                          className="text-xs bg-muted text-foreground/80 rounded-full px-2 py-0.5"
                         >
                           {s}
                         </span>
@@ -469,7 +469,7 @@ export default function Home() {
                     </div>
                   )}
                   {classification.specialInstructions.length > 0 && (
-                    <ul className="text-xs text-yellow-400 list-disc list-inside space-y-0.5">
+                    <ul className="text-xs text-pulse-yellow list-disc list-inside space-y-0.5">
                       {classification.specialInstructions.map((i) => (
                         <li key={i}>{i}</li>
                       ))}
@@ -494,21 +494,21 @@ export default function Home() {
 
               {/* Selected Hospital */}
               {selectedHospital && (
-                <div className="bg-gray-900 rounded-xl p-4 border border-green-800 flex flex-col gap-1 touch-manipulation">
-                  <p className="text-xs text-green-400 uppercase tracking-wider mb-1">
+                <div className="bg-card rounded-xl p-4 border border-pulse-green/30 flex flex-col gap-1 touch-manipulation">
+                  <p className="text-xs text-pulse-green uppercase tracking-wider mb-1">
                     Dispatching To
                   </p>
                   <p className="text-white font-bold text-base">
                     {selectedHospital.name}
                   </p>
-                  <p className="text-gray-400 text-xs">{selectedHospital.address}</p>
+                  <p className="text-muted-foreground text-xs">{selectedHospital.address}</p>
                   {selectedHospital.distanceKm !== undefined && (
-                    <p className="text-gray-400 text-xs">
+                    <p className="text-muted-foreground text-xs">
                       {selectedHospital.distanceKm.toFixed(1)} km away
                     </p>
                   )}
                   {selectedHospital.scrapingData?.erWaitTime && (
-                    <p className="text-yellow-400 text-xs">
+                    <p className="text-pulse-yellow text-xs">
                       ER wait: {selectedHospital.scrapingData.erWaitTime}
                     </p>
                   )}
@@ -520,9 +520,9 @@ export default function Home() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-green-900 border border-green-600 rounded-xl p-5 text-center flex flex-col gap-2 touch-manipulation"
+                  className="bg-pulse-green/20 border border-pulse-green/50 rounded-xl p-5 text-center flex flex-col gap-2 touch-manipulation"
                 >
-                  <p className="text-green-300 text-2xl font-black tracking-widest">
+                  <p className="text-pulse-green text-2xl font-black tracking-widest">
                     CALL DISPATCHED
                   </p>
                   {selectedHospital?.name && (
@@ -530,7 +530,7 @@ export default function Home() {
                       {selectedHospital.name}
                     </p>
                   )}
-                  <p className="text-green-400 text-xs uppercase tracking-wider">
+                  <p className="text-pulse-green text-xs uppercase tracking-wider">
                     Status: {callResult.status}
                   </p>
                 </motion.div>
@@ -538,7 +538,7 @@ export default function Home() {
 
               {/* Processing indicator */}
               {phase === "processing" && (
-                <div className="flex items-center justify-center gap-2 text-gray-400 text-sm py-2">
+                <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm py-2">
                   <span className="animate-pulse">●</span>
                   <span>Processing…</span>
                 </div>
@@ -555,15 +555,15 @@ export default function Home() {
               exit={{ opacity: 0 }}
               className="w-full flex flex-col items-center gap-4"
             >
-              <div className="bg-red-950 border border-red-700 rounded-xl p-5 w-full text-center touch-manipulation">
-                <p className="text-red-400 font-bold text-lg mb-2">
+              <div className="bg-destructive/20 border border-destructive/50 rounded-xl p-5 w-full text-center touch-manipulation">
+                <p className="text-destructive font-bold text-lg mb-2">
                   Something went wrong
                 </p>
-                <p className="text-gray-300 text-sm">{error}</p>
+                <p className="text-foreground/80 text-sm">{error}</p>
               </div>
               <button
                 onClick={handleRetry}
-                className="bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold py-4 px-10 rounded-2xl text-lg tracking-widest transition-colors w-full sm:w-auto"
+                className="bg-primary hover:bg-red-500 active:bg-red-700 text-white font-bold py-4 px-10 rounded-2xl text-lg tracking-widest transition-colors w-full sm:w-auto"
               >
                 RETRY
               </button>
