@@ -16,4 +16,9 @@ export const ENV = {
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY ?? "",
   vapiPhoneNumberId: process.env.VAPI_PHONE_NUMBER_ID ?? "",
   demoTargetPhone: process.env.DEMO_TARGET_PHONE ?? "+919204151001",
+  // Twilio SMS
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+  twilioApiKeySid: process.env.TWILIO_API_KEY_SID ?? "",
+  twilioApiKeySecret: process.env.TWILIO_API_KEY_SECRET ?? "",
+  twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER ?? "",
 };

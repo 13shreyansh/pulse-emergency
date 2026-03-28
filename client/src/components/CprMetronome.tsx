@@ -135,7 +135,7 @@ export default function CprMetronome({
     : "scale-100 bg-red-950 shadow-[0_0_12px_rgba(127,29,29,0.35)]";
 
   return (
-    <div className="flex w-full max-w-xl flex-col items-center gap-6 rounded-2xl bg-black px-6 py-8 text-center text-white select-none">
+    <div className="flex w-full max-w-xl flex-col items-center gap-6 rounded-2xl bg-background px-6 py-8 text-center text-white select-none">
       <div
         className={`flex h-[120px] w-[120px] sm:h-[150px] sm:w-[150px] items-center justify-center rounded-full border-4 border-red-200/80 transition-all duration-100 ease-out ${circleClasses}`}
       >

@@ -201,7 +201,7 @@ export default function PanicButton({
         : "TAP AND SPEAK";
 
   return (
-    <div className="flex items-center justify-center bg-black px-4 text-white">
+    <div className="flex items-center justify-center bg-background px-4 text-white">
       <style>
         {`
           @keyframes panic-slow-pulse {

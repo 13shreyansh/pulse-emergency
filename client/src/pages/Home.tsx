@@ -4,12 +4,16 @@ import PanicButton from "@/components/PanicButton";
 import CprMetronome from "@/components/CprMetronome";
 import StatusFeed from "@/components/StatusFeed";
 import DemoMode from "@/components/DemoMode";
+import CallTracker from "@/components/CallTracker";
+import HospitalComparisonTable from "@/components/HospitalComparisonTable";
+import TinyFishBadge from "@/components/TinyFishBadge";
 import { trpc } from "@/lib/trpc";
 import type {
   ClassificationResult,
   CprGuidance,
   HospitalResult,
   DispatchStatus,
+  ScrapingResult,
 } from "../../../shared/pulse-types";
 
 type Phase = "idle" | "recording" | "processing" | "dispatched" | "error";
@@ -48,9 +52,18 @@ export default function Home() {
   const [hospitals, setHospitals] = useState<HospitalResult[] | null>(null);
   const [selectedHospital, setSelectedHospital] = useState<any | null>(null);
   const [callResult, setCallResult] = useState<any | null>(null);
+  const [scrapingResults, setScrapingResults] = useState<ScrapingResult[] | null>(null);
   const [logs, setLogs] = useState<DispatchStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [cprActive, setCprActive] = useState(false);
+
+  // Auto-retry state
+  const [rankedHospitals, setRankedHospitals] = useState<HospitalResult[]>([]);
+  const [attemptIndex, setAttemptIndex] = useState(0);
+  const [emergencyDetailsForRetry, setEmergencyDetailsForRetry] = useState<any | null>(null);
+  const [previousAttempts, setPreviousAttempts] = useState<
+    Array<{ hospitalName: string; callId: string; outcome: string }>
+  >([]);
 
   const startSessionMut = trpc.emergency.startSession.useMutation();
   const transcribeMut = trpc.emergency.transcribe.useMutation();
@@ -61,25 +74,116 @@ export default function Home() {
 
   const getLocation = (): Promise<{ latitude: number; longitude: number }> =>
     new Promise((resolve) => {
+      const fallback = { latitude: 1.3521, longitude: 103.8198 };
+      let resolved = false;
+      const done = (coords: { latitude: number; longitude: number }) => {
+        if (!resolved) { resolved = true; resolve(coords); }
+      };
+      setTimeout(() => done(fallback), 3000);
       if (!navigator.geolocation) {
-        resolve({ latitude: 1.3521, longitude: 103.8198 });
+        done(fallback);
         return;
       }
       navigator.geolocation.getCurrentPosition(
-        (pos) =>
-          resolve({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-          }),
-        () => resolve({ latitude: 1.3521, longitude: 103.8198 }),
-        { timeout: 5000 }
+        (pos) => done({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        () => done(fallback),
+        { timeout: 3000 }
       );
     });
+
+  // Dispatch to a specific hospital by index in the ranked list
+  const dispatchToHospital = useCallback(
+    async (hospitalIndex: number, hospitalList: HospitalResult[], details: any, sid: string) => {
+      const hospital = hospitalList[hospitalIndex];
+      if (!hospital) {
+        addLog(logs, setLogs, sid, "dispatch", "No more hospitals available to try.");
+        return;
+      }
+
+      setSelectedHospital(hospital);
+      setAttemptIndex(hospitalIndex);
+
+      addLog(
+        logs,
+        setLogs,
+        sid,
+        "dispatch",
+        hospitalIndex === 0
+          ? `Dispatching emergency call to ${hospital.name}...`
+          : `Retrying — calling ${hospital.name} (attempt ${hospitalIndex + 1})...`
+      );
+
+      const dispatchRes = await dispatchMut.mutateAsync({
+        sessionId: sid,
+        emergencyDetails: {
+          ...details,
+          hospitalName: hospital.name,
+          distance: hospital.distanceKm != null ? `${hospital.distanceKm.toFixed(1)} km` : undefined,
+        },
+      });
+
+      setCallResult(dispatchRes);
+      addLog(
+        logs,
+        setLogs,
+        sid,
+        "dispatch",
+        `Call dispatched to ${hospital.name} — status: ${dispatchRes.status}`,
+        { callId: dispatchRes.callId }
+      );
+
+      setPhase("dispatched");
+    },
+    [dispatchMut, logs]
+  );
+
+  // Handle rejection — try next hospital
+  const handleCallRejected = useCallback(() => {
+    if (!sessionId || !emergencyDetailsForRetry) return;
+
+    const nextIndex = attemptIndex + 1;
+
+    // Save previous attempt
+    setPreviousAttempts((prev) => [
+      ...prev,
+      {
+        hospitalName: selectedHospital?.name ?? "Unknown",
+        callId: callResult?.callId ?? "",
+        outcome: "rejected",
+      },
+    ]);
+
+    if (nextIndex >= rankedHospitals.length) {
+      addLog(logs, setLogs, sessionId, "dispatch", "All hospitals have been tried. No hospital accepted the patient.");
+      return;
+    }
+
+    addLog(
+      logs,
+      setLogs,
+      sessionId,
+      "retry",
+      `${selectedHospital?.name} declined — auto-dialing next hospital...`
+    );
+
+    // Dispatch to next hospital
+    dispatchToHospital(nextIndex, rankedHospitals, emergencyDetailsForRetry, sessionId);
+  }, [
+    sessionId,
+    emergencyDetailsForRetry,
+    attemptIndex,
+    rankedHospitals,
+    selectedHospital,
+    callResult,
+    logs,
+    dispatchToHospital,
+  ]);
 
   const runPipeline = useCallback(
     async (audioBase64: string, mimeType: string) => {
       setPhase("processing");
       setError(null);
+      setPreviousAttempts([]);
 
       try {
         // Step 1: Start session
@@ -156,6 +260,9 @@ export default function Home() {
           emergencyType: classifyRes.classification.emergencyType,
         });
         setSelectedHospital(scrapeRes.selectedHospital);
+        if (scrapeRes.allResults) {
+          setScrapingResults(scrapeRes.allResults as ScrapingResult[]);
+        }
         addLog(
           logs,
           setLogs,
@@ -165,30 +272,21 @@ export default function Home() {
           { hospital: scrapeRes.selectedHospital as unknown as Record<string, unknown> }
         );
 
-        // Step 8: Dispatch
-        addLog(logs, setLogs, sid, "dispatch", "Dispatching emergency call...");
-        const dispatchRes = await dispatchMut.mutateAsync({
-          sessionId: sid,
-          emergencyDetails: {
-            emergencyType: classifyRes.classification.emergencyType,
-            severity: classifyRes.classification.severity,
-            summary: classifyRes.classification.summary,
-            cprStatus: classifyRes.cprGuidance?.needed ? "active" : "not_needed",
-            patientCondition: transcribeRes.transcript,
-            hospitalName: scrapeRes.selectedHospital?.name,
-          },
-        });
-        setCallResult(dispatchRes);
-        addLog(
-          logs,
-          setLogs,
-          sid,
-          "dispatch",
-          `Call dispatched — status: ${dispatchRes.status}`,
-          { callId: dispatchRes.callId }
-        );
+        // Store ranked hospitals and emergency details for auto-retry
+        setRankedHospitals(hospitalsRes.hospitals);
+        const details = {
+          emergencyType: classifyRes.classification.emergencyType,
+          severity: classifyRes.classification.severity,
+          summary: classifyRes.classification.summary,
+          cprStatus: classifyRes.cprGuidance?.needed ? "active" : "not_needed",
+          patientCondition: transcribeRes.transcript,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        };
+        setEmergencyDetailsForRetry(details);
 
-        setPhase("dispatched");
+        // Step 8: Dispatch to first (best) hospital
+        await dispatchToHospital(0, hospitalsRes.hospitals, details, sid);
       } catch (err: unknown) {
         const msg =
           err instanceof Error ? err.message : "An unexpected error occurred";
@@ -206,13 +304,14 @@ export default function Home() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [startSessionMut, transcribeMut, classifyMut, searchHospitalsMut, scrapeAndSelectMut, dispatchMut]
+    [startSessionMut, transcribeMut, classifyMut, searchHospitalsMut, scrapeAndSelectMut, dispatchToHospital]
   );
 
   const runDemoPipeline = useCallback(
     async (demoTranscript: string) => {
       setPhase("processing");
       setError(null);
+      setPreviousAttempts([]);
 
       try {
         // Step 1: Start session
@@ -283,6 +382,9 @@ export default function Home() {
           emergencyType: classifyRes.classification.emergencyType,
         });
         setSelectedHospital(scrapeRes.selectedHospital);
+        if (scrapeRes.allResults) {
+          setScrapingResults(scrapeRes.allResults as ScrapingResult[]);
+        }
         addLog(
           logs,
           setLogs,
@@ -292,30 +394,21 @@ export default function Home() {
           { hospital: scrapeRes.selectedHospital as unknown as Record<string, unknown> }
         );
 
-        // Step 8: Dispatch
-        addLog(logs, setLogs, sid, "dispatch", "Dispatching emergency call...");
-        const dispatchRes = await dispatchMut.mutateAsync({
-          sessionId: sid,
-          emergencyDetails: {
-            emergencyType: classifyRes.classification.emergencyType,
-            severity: classifyRes.classification.severity,
-            summary: classifyRes.classification.summary,
-            cprStatus: classifyRes.cprGuidance?.needed ? "active" : "not_needed",
-            patientCondition: demoTranscript,
-            hospitalName: scrapeRes.selectedHospital?.name,
-          },
-        });
-        setCallResult(dispatchRes);
-        addLog(
-          logs,
-          setLogs,
-          sid,
-          "dispatch",
-          `Call dispatched — status: ${dispatchRes.status}`,
-          { callId: dispatchRes.callId }
-        );
+        // Store ranked hospitals and emergency details for auto-retry
+        setRankedHospitals(hospitalsRes.hospitals);
+        const details = {
+          emergencyType: classifyRes.classification.emergencyType,
+          severity: classifyRes.classification.severity,
+          summary: classifyRes.classification.summary,
+          cprStatus: classifyRes.cprGuidance?.needed ? "active" : "not_needed",
+          patientCondition: demoTranscript,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        };
+        setEmergencyDetailsForRetry(details);
 
-        setPhase("dispatched");
+        // Step 8: Dispatch to first (best) hospital
+        await dispatchToHospital(0, hospitalsRes.hospitals, details, sid);
       } catch (err: unknown) {
         const msg =
           err instanceof Error ? err.message : "An unexpected error occurred";
@@ -333,7 +426,7 @@ export default function Home() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [startSessionMut, classifyMut, searchHospitalsMut, scrapeAndSelectMut, dispatchMut]
+    [startSessionMut, classifyMut, searchHospitalsMut, scrapeAndSelectMut, dispatchToHospital]
   );
 
   const handleRecordingComplete = useCallback(
@@ -352,9 +445,14 @@ export default function Home() {
     setHospitals(null);
     setSelectedHospital(null);
     setCallResult(null);
+    setScrapingResults(null);
     setLogs([]);
     setError(null);
     setCprActive(false);
+    setRankedHospitals([]);
+    setAttemptIndex(0);
+    setEmergencyDetailsForRetry(null);
+    setPreviousAttempts([]);
   };
 
   const currentStep =
@@ -496,7 +594,7 @@ export default function Home() {
               {selectedHospital && (
                 <div className="bg-card rounded-xl p-4 border border-pulse-green/30 flex flex-col gap-1 touch-manipulation">
                   <p className="text-xs text-pulse-green uppercase tracking-wider mb-1">
-                    Dispatching To
+                    {attemptIndex > 0 ? `Retrying — Attempt ${attemptIndex + 1}` : "Dispatching To"}
                   </p>
                   <p className="text-white font-bold text-base">
                     {selectedHospital.name}
@@ -515,24 +613,63 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Dispatched confirmation */}
+              {/* Previous Attempts Summary */}
+              {previousAttempts.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-card rounded-xl p-4 border border-red-900/50"
+                >
+                  <p className="text-xs text-muted-foreground uppercase tracking-widest mb-2">
+                    Previous Attempts
+                  </p>
+                  <div className="space-y-1">
+                    {previousAttempts.map((attempt, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span className="text-muted-foreground">
+                          {attempt.hospitalName} — <span className="text-red-400">declined</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Live Call Tracker */}
               {phase === "dispatched" && callResult && (
+                <motion.div
+                  key={`call-${callResult.callId}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <CallTracker
+                    callId={callResult.callId}
+                    hospitalName={selectedHospital?.name ?? "Hospital"}
+                    attemptNumber={attemptIndex + 1}
+                    totalHospitals={rankedHospitals.length}
+                    onRejected={
+                      attemptIndex + 1 < rankedHospitals.length
+                        ? handleCallRejected
+                        : undefined
+                    }
+                  />
+                </motion.div>
+              )}
+
+              {/* Hospital Comparison Table */}
+              {scrapingResults && scrapingResults.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-pulse-green/20 border border-pulse-green/50 rounded-xl p-5 text-center flex flex-col gap-2 touch-manipulation"
+                  transition={{ delay: 0.2 }}
                 >
-                  <p className="text-pulse-green text-2xl font-black tracking-widest">
-                    CALL DISPATCHED
-                  </p>
-                  {selectedHospital?.name && (
-                    <p className="text-white text-sm">
-                      {selectedHospital.name}
-                    </p>
-                  )}
-                  <p className="text-pulse-green text-xs uppercase tracking-wider">
-                    Status: {callResult.status}
-                  </p>
+                  <HospitalComparisonTable
+                    results={scrapingResults}
+                    selectedHospitalName={selectedHospital?.name}
+                  />
                 </motion.div>
               )}
 
@@ -587,6 +724,11 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* TinyFish Branding */}
+      <footer className="w-full max-w-md mt-8 mb-2">
+        <TinyFishBadge />
+      </footer>
     </div>
   );
 }

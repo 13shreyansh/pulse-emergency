@@ -78,6 +78,8 @@ export const dispatchLogs = mysqlTable("dispatch_logs", {
     "call_connected",
     "call_completed",
     "cpr_guidance_started",
+    "sms_sent",
+    "sms_failed",
     "error",
   ]).notNull(),
   message: text("message").notNull(),

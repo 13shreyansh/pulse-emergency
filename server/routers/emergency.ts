@@ -4,7 +4,8 @@ import { publicProcedure, router } from "../_core/trpc";
 import { classifyEmergency, transcribeAudio } from "../services/classify";
 import { searchNearbyHospitals } from "../services/hospitals";
 import { scrapeHospitalsConcurrently, selectBestHospital } from "../services/scraper";
-import { dispatchCall, getCallStatus } from "../services/dispatch";
+import { dispatchCall, getCallStatus, parseCallOutcome } from "../services/dispatch";
+import { sendLocationSms } from "../services/sms";
 import { createSession, getSession, updateSession, addLog, getLogs } from "../services/db-helpers";
 import { ENV } from "../_core/env";
 import type { ClassificationResult, HospitalResult, ScrapingResult, CprGuidance } from "../../shared/pulse-types";
@@ -187,6 +188,9 @@ export const emergencyRouter = router({
         eta: z.string().optional(),
         patientCondition: z.string().optional(),
         hospitalName: z.string().optional(),
+        distance: z.string().optional(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
       }),
     }))
     .mutation(async ({ input }) => {
@@ -209,6 +213,28 @@ export const emergencyRouter = router({
         { callId: result.callId, status: result.status }
       );
 
+      // Send GPS location via SMS (fire-and-forget, don't block the call)
+      if (emergencyDetails.latitude != null && emergencyDetails.longitude != null && ENV.twilioAccountSid) {
+        sendLocationSms(phone, {
+          hospitalName: emergencyDetails.hospitalName || "Hospital",
+          emergencyType: emergencyDetails.emergencyType,
+          latitude: emergencyDetails.latitude,
+          longitude: emergencyDetails.longitude,
+        })
+          .then((smsRes) => {
+            addLog(sessionId, "sms_sent",
+              `GPS location sent via SMS (ID: ${smsRes.messageSid}). Google Maps link included.`,
+              { messageSid: smsRes.messageSid }
+            );
+          })
+          .catch((err) => {
+            console.error("SMS send failed:", err?.message ?? err);
+            addLog(sessionId, "sms_failed",
+              `SMS send failed: ${err?.message ?? "unknown error"}. Call still in progress.`
+            );
+          });
+      }
+
       return result;
     }),
 
@@ -226,10 +252,14 @@ export const emergencyRouter = router({
       return getLogs(input.sessionId);
     }),
 
-  getCallStatus: publicProcedure
+  callStatus: publicProcedure
     .input(z.object({ callId: z.string() }))
     .query(async ({ input }) => {
-      return getCallStatus(input.callId);
+      const status = await getCallStatus(input.callId);
+      const outcome = status.transcript
+        ? parseCallOutcome(status.transcript)
+        : undefined;
+      return { ...status, outcome };
     }),
 
   // Demo mode: run the full pipeline with simulated data

@@ -12,6 +12,8 @@ interface EmergencyDetails {
   patientCondition?: string;
   hospitalName?: string;
   distance?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface DispatchResult {
@@ -55,12 +57,16 @@ Wait for their response.
 If they confirm yes, proceed to STEP 4.
 If they cannot confirm readiness, say: "Understood, we will try the next nearest facility. Thank you for your time." and end the call.
 
-STEP 4 — ETA & Relay Request:
-Say exactly: "Thank you. The patient's estimated arrival is approximately 8 minutes. Is there anything you need us to relay to the bystander?"
+STEP 4 — Ambulance & Location:
+Say exactly: "Thank you. We are dispatching an ambulance now. The patient's GPS coordinates are ${details.latitude != null && details.longitude != null ? `latitude ${details.latitude}, longitude ${details.longitude}` : "being acquired"}. I'm also sending these coordinates via text message. Can you confirm you'll have a team ready at the ER entrance?"
+Wait for their response.
+
+STEP 5 — Relay Request:
+Say exactly: "The patient's estimated arrival is approximately 8 minutes. Is there anything you need us to relay to the bystander on scene?"
 Wait for their response. Listen carefully and note any instructions they give.
 
-STEP 5 — Close:
-Acknowledge their instructions (if any) and close politely. For example: "Understood, I'll relay that immediately. Thank you for your quick response. Goodbye." or if no instructions: "Perfect. We'll keep this line open if needed. Thank you and goodbye."
+STEP 6 — Close:
+Acknowledge their instructions (if any) and close politely. For example: "Understood, I'll relay that immediately. Ambulance is en route with the GPS location. Thank you for your quick response. Goodbye." or if no instructions: "Perfect. Ambulance is en route. We'll keep this line open if needed. Thank you and goodbye."
 
 IMPORTANT RULES:
 - Speak calmly and clearly at all times. This is an emergency.

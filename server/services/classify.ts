@@ -37,7 +37,7 @@ Medical guardrails:
 
 export async function classifyEmergency(transcript: string): Promise<ClassificationResult> {
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-4.1-mini",
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: `Emergency transcript:\n\n"${transcript}"` },
