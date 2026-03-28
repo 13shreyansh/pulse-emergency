@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import PanicButton from "@/components/PanicButton";
 import CprMetronome from "@/components/CprMetronome";
 import StatusFeed from "@/components/StatusFeed";
+import DemoMode from "@/components/DemoMode";
 import { trpc } from "@/lib/trpc";
 import type {
   ClassificationResult,
@@ -172,7 +173,7 @@ export default function Home() {
             emergencyType: classifyRes.classification.emergencyType,
             severity: classifyRes.classification.severity,
             summary: classifyRes.classification.summary,
-            cprStatus: cprGuidance?.needed ? "active" : "not_needed",
+            cprStatus: classifyRes.cprGuidance?.needed ? "active" : "not_needed",
             patientCondition: transcribeRes.transcript,
             hospitalName: scrapeRes.selectedHospital?.name,
           },
@@ -208,6 +209,133 @@ export default function Home() {
     [startSessionMut, transcribeMut, classifyMut, searchHospitalsMut, scrapeAndSelectMut, dispatchMut]
   );
 
+  const runDemoPipeline = useCallback(
+    async (demoTranscript: string) => {
+      setPhase("processing");
+      setError(null);
+
+      try {
+        // Step 1: Start session
+        const sessionRes = await startSessionMut.mutateAsync();
+        const sid = sessionRes.sessionId;
+        setSessionId(sid);
+        addLog(logs, setLogs, sid, "session", "Emergency session started");
+
+        // Step 2: Use provided transcript (skip transcribe)
+        setTranscript(demoTranscript);
+        addLog(logs, setLogs, sid, "transcribe", `Transcript: "${demoTranscript}"`);
+
+        // Step 3: Classify
+        addLog(logs, setLogs, sid, "classify", "Classifying emergency...");
+        const classifyRes = await classifyMut.mutateAsync({
+          sessionId: sid,
+          transcript: demoTranscript,
+        });
+        setClassification(classifyRes.classification);
+        setCprGuidance(classifyRes.cprGuidance);
+        addLog(
+          logs,
+          setLogs,
+          sid,
+          "classify",
+          `${classifyRes.classification.emergencyType} — ${classifyRes.classification.severity}`,
+          { classification: classifyRes.classification as unknown as Record<string, unknown> }
+        );
+
+        // Step 4: Show CPR if needed
+        if (classifyRes.cprGuidance?.needed) {
+          setCprActive(true);
+        }
+
+        // Step 5: Get location
+        addLog(logs, setLogs, sid, "location", "Getting your location...");
+        const coords = await getLocation();
+        addLog(
+          logs,
+          setLogs,
+          sid,
+          "location",
+          `Location acquired: ${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`
+        );
+
+        // Step 6: Search hospitals
+        addLog(logs, setLogs, sid, "hospitals", "Searching nearby hospitals...");
+        const hospitalsRes = await searchHospitalsMut.mutateAsync({
+          sessionId: sid,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          hospitalType: classifyRes.classification.hospitalType,
+        });
+        setHospitals(hospitalsRes.hospitals);
+        addLog(
+          logs,
+          setLogs,
+          sid,
+          "hospitals",
+          `Found ${hospitalsRes.hospitals.length} hospitals`
+        );
+
+        // Step 7: Scrape and select
+        addLog(logs, setLogs, sid, "scrape", "Analysing hospital readiness...");
+        const scrapeRes = await scrapeAndSelectMut.mutateAsync({
+          sessionId: sid,
+          hospitals: hospitalsRes.hospitals,
+          emergencyType: classifyRes.classification.emergencyType,
+        });
+        setSelectedHospital(scrapeRes.selectedHospital);
+        addLog(
+          logs,
+          setLogs,
+          sid,
+          "scrape",
+          `Selected: ${scrapeRes.selectedHospital?.name ?? "unknown"}`,
+          { hospital: scrapeRes.selectedHospital as unknown as Record<string, unknown> }
+        );
+
+        // Step 8: Dispatch
+        addLog(logs, setLogs, sid, "dispatch", "Dispatching emergency call...");
+        const dispatchRes = await dispatchMut.mutateAsync({
+          sessionId: sid,
+          emergencyDetails: {
+            emergencyType: classifyRes.classification.emergencyType,
+            severity: classifyRes.classification.severity,
+            summary: classifyRes.classification.summary,
+            cprStatus: classifyRes.cprGuidance?.needed ? "active" : "not_needed",
+            patientCondition: demoTranscript,
+            hospitalName: scrapeRes.selectedHospital?.name,
+          },
+        });
+        setCallResult(dispatchRes);
+        addLog(
+          logs,
+          setLogs,
+          sid,
+          "dispatch",
+          `Call dispatched — status: ${dispatchRes.status}`,
+          { callId: dispatchRes.callId }
+        );
+
+        setPhase("dispatched");
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error ? err.message : "An unexpected error occurred";
+        setError(msg);
+        setPhase("error");
+        setLogs((prev) => [
+          ...prev,
+          {
+            sessionId: sessionId ?? "unknown",
+            step: "error",
+            message: msg,
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [startSessionMut, classifyMut, searchHospitalsMut, scrapeAndSelectMut, dispatchMut]
+  );
+
   const handleRecordingComplete = useCallback(
     (audioBase64: string, mimeType: string) => {
       runPipeline(audioBase64, mimeType);
@@ -241,10 +369,10 @@ export default function Home() {
       : "error";
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center px-4 py-6">
+    <div className="min-h-screen bg-black text-white flex flex-col items-center px-4 py-6 pb-[env(safe-area-inset-bottom)]">
       {/* Header */}
       <header className="w-full max-w-md text-center mb-8">
-        <h1 className="text-4xl font-black tracking-widest text-red-500">
+        <h1 className="text-3xl sm:text-4xl font-black tracking-widest text-red-500">
           PULSE
         </h1>
         <p className="text-xs text-gray-400 tracking-widest uppercase mt-1">
@@ -253,7 +381,7 @@ export default function Home() {
       </header>
 
       {/* Main content area */}
-      <main className="w-full max-w-md flex-1 flex flex-col items-center gap-6">
+      <main className="w-full max-w-md flex-1 flex flex-col items-center gap-6 overflow-y-auto">
         <AnimatePresence mode="wait">
           {/* IDLE / RECORDING: show PanicButton */}
           {(phase === "idle" || phase === "recording") && (
@@ -271,9 +399,17 @@ export default function Home() {
                 status={phase === "recording" ? "recording" : "idle"}
               />
               {phase === "idle" && (
-                <p className="text-gray-500 text-sm text-center">
-                  Hold the button and describe the emergency
-                </p>
+                <>
+                  <p className="text-gray-500 text-sm text-center">
+                    Hold the button and describe the emergency
+                  </p>
+                  <div className="w-full mt-4">
+                    <DemoMode
+                      onRunDemo={(transcript) => runDemoPipeline(transcript)}
+                      disabled={phase !== "idle"}
+                    />
+                  </div>
+                </>
               )}
             </motion.div>
           )}
@@ -290,7 +426,7 @@ export default function Home() {
             >
               {/* Transcript */}
               {transcript && (
-                <div className="bg-gray-900 rounded-xl p-4 border border-gray-700">
+                <div className="bg-gray-900 rounded-xl p-4 border border-gray-700 touch-manipulation">
                   <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
                     Transcript
                   </p>
@@ -302,7 +438,7 @@ export default function Home() {
 
               {/* Classification */}
               {classification && (
-                <div className="bg-gray-900 rounded-xl p-4 border border-gray-700 flex flex-col gap-3">
+                <div className="bg-gray-900 rounded-xl p-4 border border-gray-700 flex flex-col gap-3 touch-manipulation">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span
                       className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded ${
@@ -358,7 +494,7 @@ export default function Home() {
 
               {/* Selected Hospital */}
               {selectedHospital && (
-                <div className="bg-gray-900 rounded-xl p-4 border border-green-800 flex flex-col gap-1">
+                <div className="bg-gray-900 rounded-xl p-4 border border-green-800 flex flex-col gap-1 touch-manipulation">
                   <p className="text-xs text-green-400 uppercase tracking-wider mb-1">
                     Dispatching To
                   </p>
@@ -384,7 +520,7 @@ export default function Home() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-green-900 border border-green-600 rounded-xl p-5 text-center flex flex-col gap-2"
+                  className="bg-green-900 border border-green-600 rounded-xl p-5 text-center flex flex-col gap-2 touch-manipulation"
                 >
                   <p className="text-green-300 text-2xl font-black tracking-widest">
                     CALL DISPATCHED
@@ -419,7 +555,7 @@ export default function Home() {
               exit={{ opacity: 0 }}
               className="w-full flex flex-col items-center gap-4"
             >
-              <div className="bg-red-950 border border-red-700 rounded-xl p-5 w-full text-center">
+              <div className="bg-red-950 border border-red-700 rounded-xl p-5 w-full text-center touch-manipulation">
                 <p className="text-red-400 font-bold text-lg mb-2">
                   Something went wrong
                 </p>
@@ -427,7 +563,7 @@ export default function Home() {
               </div>
               <button
                 onClick={handleRetry}
-                className="bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold py-4 px-10 rounded-2xl text-lg tracking-widest transition-colors"
+                className="bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold py-4 px-10 rounded-2xl text-lg tracking-widest transition-colors w-full sm:w-auto"
               >
                 RETRY
               </button>

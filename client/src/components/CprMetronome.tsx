@@ -135,9 +135,9 @@ export default function CprMetronome({
     : "scale-100 bg-red-950 shadow-[0_0_12px_rgba(127,29,29,0.35)]";
 
   return (
-    <div className="flex w-full max-w-xl flex-col items-center gap-6 rounded-2xl bg-black px-6 py-8 text-center text-white">
+    <div className="flex w-full max-w-xl flex-col items-center gap-6 rounded-2xl bg-black px-6 py-8 text-center text-white select-none">
       <div
-        className={`flex h-[150px] w-[150px] items-center justify-center rounded-full border-4 border-red-200/80 transition-all duration-100 ease-out ${circleClasses}`}
+        className={`flex h-[120px] w-[120px] sm:h-[150px] sm:w-[150px] items-center justify-center rounded-full border-4 border-red-200/80 transition-all duration-100 ease-out ${circleClasses}`}
       >
         <span
           className={`text-4xl font-black tracking-[0.35em] transition-colors duration-100 ${
@@ -152,7 +152,7 @@ export default function CprMetronome({
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-red-300">
           Compressions
         </p>
-        <p className="text-5xl font-black text-white">{compressionCount}</p>
+        <p className="text-4xl sm:text-5xl font-black text-white">{compressionCount}</p>
       </div>
 
       <p className="max-w-md text-sm leading-6 text-red-50">

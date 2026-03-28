@@ -201,7 +201,7 @@ export default function PanicButton({
         : "TAP AND SPEAK";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black px-4 text-white">
+    <div className="flex items-center justify-center bg-black px-4 text-white">
       <style>
         {`
           @keyframes panic-slow-pulse {
@@ -221,13 +221,13 @@ export default function PanicButton({
         `}
       </style>
 
-      <div className="flex flex-col items-center justify-center gap-6 text-center">
+      <div className="flex flex-col items-center justify-center gap-6 text-center select-none">
         <button
           type="button"
           disabled={disabled || isProcessing}
           onMouseDown={handlePressStart}
           onTouchStart={handlePressStart}
-          className={`flex h-[200px] w-[200px] touch-manipulation items-center justify-center rounded-full bg-red-600 transition-opacity duration-200 ${buttonAnimationClass} ${(disabled || isProcessing) ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+          className={`flex h-[180px] w-[180px] sm:h-[220px] sm:w-[220px] touch-manipulation items-center justify-center rounded-full bg-red-600 transition-opacity duration-200 ${buttonAnimationClass} ${(disabled || isProcessing) ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
           style={{
             boxShadow:
               effectiveStatus === "processing"
