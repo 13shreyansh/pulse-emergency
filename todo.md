@@ -19,5 +19,5 @@
 - [x] Agent: Emergency flow page wiring all components (Claude Code)
 - [x] Agent: App.tsx routing and theme config (Codex)
 - [x] Agent: db-helpers for emergency sessions (Claude Code)
-- [ ] Create GitHub repo and push all current working code
+- [x] Create GitHub repo and push all current working code (https://github.com/13shreyansh/pulse-emergency)
 - [ ] Push to GitHub after every major milestone going forward
