@@ -1,0 +1,23 @@
+# Project Pulse - TODO
+
+- [x] Configure all API secrets (OpenAI, ElevenLabs, Vapi, TinyFish, Google Places)
+- [x] Database schema for emergency sessions and dispatch logs
+- [x] Dark emergency theme with OKLCH color tokens
+- [x] Voice-first panic button UI with pulsing red circle and Web Audio API capture
+- [x] CPR metronome component (100 BPM pulsing circle with audio beep)
+- [x] Live status feed UI showing real-time agent updates
+- [x] OpenAI GPT-4o emergency classification API route
+- [x] Google Places API 15km radius hospital search by emergency type
+- [x] TinyFish concurrent web agent fan-out for hospital scraping
+- [x] Vapi AI autonomous outbound phone call dispatch
+- [x] Context-aware medical guardrails (CPR competence check, AHA hands-only guidance)
+- [ ] Mobile-first responsive design with large touch targets
+- [ ] Demo mode with simulated hospital data and test call to +91 9204151001
+- [x] End-to-end flow wiring (voice → classify → search → scrape → call)
+- [x] Vitest test coverage for backend API routes
+- [x] Agent: tRPC emergency router (Claude Code)
+- [x] Agent: Emergency flow page wiring all components (Claude Code)
+- [x] Agent: App.tsx routing and theme config (Codex)
+- [x] Agent: db-helpers for emergency sessions (Claude Code)
+- [ ] Create GitHub repo and push all current working code
+- [ ] Push to GitHub after every major milestone going forward

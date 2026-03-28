@@ -1,0 +1,40 @@
+{
+  "sprint": "PULSE-MVP",
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "Vapi Dispatch Service",
+      "assignee": "claude-code",
+      "status": "pending",
+      "spec": "Create server/services/dispatch.ts — Vapi AI outbound phone call service. Use axios to POST to https://api.vapi.ai/call with Bearer token from ENV.vapiApiKey. The call payload must include: phoneNumberId from ENV.vapiPhoneNumberId, customer.number as the target phone, assistant.firstMessage with emergency details (patient condition, ETA, bystander CPR status), assistant.model with provider openai and model gpt-4o, assistant.voice with provider 11labs. Function: dispatchCall(targetPhone, emergencyDetails) returns {callId, status}."
+    },
+    {
+      "id": "TASK-002",
+      "title": "tRPC Router - Emergency Dispatch Pipeline",
+      "assignee": "claude-code",
+      "status": "pending",
+      "spec": "Create server/routers/emergency.ts — Full tRPC router with these procedures: (1) emergency.startSession — creates a new session in DB, returns sessionId. (2) emergency.transcribe — accepts base64 audio + mimeType, calls transcribeAudio, updates session. (3) emergency.classify — accepts sessionId + transcript, calls classifyEmergency, updates session. (4) emergency.searchHospitals — accepts sessionId + lat/lng, calls searchNearbyHospitals, updates session. (5) emergency.scrapeHospitals — accepts sessionId, calls scrapeHospitalsConcurrently on found hospitals, selects best, updates session. (6) emergency.dispatch — accepts sessionId, calls dispatchCall to selected hospital or demo phone, updates session. (7) emergency.getSession — returns full session state with logs. (8) emergency.getLogs — returns dispatch logs for a session. Wire this router into server/routers.ts as 'emergency' namespace."
+    },
+    {
+      "id": "TASK-003",
+      "title": "Frontend - Panic Button & Voice Capture Page",
+      "assignee": "codex",
+      "status": "pending",
+      "spec": "Create client/src/pages/Emergency.tsx — Dark theme emergency page. Large pulsing red circle button (200px) with 'TAP AND SPEAK' text. On tap: use Web Audio API (MediaRecorder) to capture audio. While recording: circle pulses faster, text changes to 'LISTENING...'. On release or after 15s: stop recording, convert to base64, show 'PROCESSING...' state. Use framer-motion for pulse animation. Mobile-first: full viewport height, large touch targets (min 48px), high contrast white-on-black text."
+    },
+    {
+      "id": "TASK-004",
+      "title": "Frontend - CPR Metronome Component",
+      "assignee": "codex",
+      "status": "pending",
+      "spec": "Create client/src/components/CprMetronome.tsx — Visual + audio CPR guide. Pulsing circle at exactly 100 BPM (600ms interval). Use Web Audio API OscillatorNode for beep (880Hz, 50ms duration). Show 'PUSH' text that flashes with each beat. Show compression count. Props: active (boolean), onStop callback. AHA-approved hands-only CPR text below: 'Push hard and fast in the center of the chest. 2 inches deep. Let chest fully recoil between compressions.'"
+    },
+    {
+      "id": "TASK-005",
+      "title": "Frontend - Live Status Feed Component",
+      "assignee": "codex",
+      "status": "pending",
+      "spec": "Create client/src/components/StatusFeed.tsx — Real-time dispatch status feed. Vertical timeline with animated entries. Each entry: icon (based on step type), message text, timestamp. Steps animate in with framer-motion (slide up + fade in). Color coding: green for success, yellow for in-progress, red for errors. Auto-scroll to latest entry. Props: logs (DispatchStatus[]), currentStep (string)."
+    }
+  ]
+}
