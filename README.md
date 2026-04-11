@@ -22,7 +22,7 @@ Pulse automates the entire dispatch process using advanced AI agents:
 3. **Live Geolocation:** The bystander's exact GPS coordinates are acquired.
 4. **Intelligent Hospital Search:** Google Places API finds all relevant hospitals within a 15km radius.
 5. **Real-Time Web Scraping (TinyFish):** Concurrent TinyFish web agents scrape the websites of all nearby hospitals to check live ER wait times, bed capacity, and specialized equipment availability.
-6. **Autonomous Dispatch (Vapi):** A Vapi voice agent calls the best-ranked hospital, has a natural conversation with the ER staff to confirm readiness, and negotiates acceptance.
+6. **Autonomous Dispatch (Vapi):** A Vapi voice agent calls the best-ranked hospital, has natural conversation with the ER staff to confirm readiness, and negotiates acceptance.
 7. **Auto-Retry & GPS SMS:** If a hospital declines, Pulse automatically dials the next best hospital. Once accepted, it fires a Twilio SMS to the hospital with the patient's exact GPS coordinates and a Google Maps link.
 
 ---
